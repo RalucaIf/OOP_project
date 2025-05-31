@@ -3,8 +3,6 @@ package model;
 import model.enums.AlertPriority;
 import model.enums.AlertStatus;
 
-import java.time.LocalDateTime;
-
 public class SecurityAlert extends Alert {
     private final String securityProblem;
 
@@ -12,8 +10,6 @@ public class SecurityAlert extends Alert {
         super(id, priority, status);
         this.securityProblem = String.valueOf(securityProblem);
     }
-
-
     public String getSecurityProblem() {
         return securityProblem;
     }

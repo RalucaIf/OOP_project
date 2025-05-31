@@ -2,9 +2,8 @@ package model;
 
 import model.enums.AlertPriority;
 import model.enums.AlertStatus;
-import model.interfaces.InterfaceAlert;
 
-public abstract class Alert implements InterfaceAlert {
+public abstract class Alert  {
     private final int id;
     private AlertPriority priority;
     private AlertStatus status;
@@ -16,31 +15,26 @@ public abstract class Alert implements InterfaceAlert {
     }
 
     // getters
-    @Override
     public int getId() {
         return id;
     }
-    @Override
     public AlertPriority getPriority() {
         return priority;
     }
-    @Override
     public AlertStatus getStatus() {
         return status;
     }
+
     // setters
-    @Override
     public void setPriority(AlertPriority priority) {
         this.priority = priority;
     }
-    @Override
+
     public void setStatus(AlertStatus status) {
         this.status = status;
     }
-    // methods
-    @Override
-    public abstract void escalate();
 
-    @Override
+    // methods
+    public abstract void escalate();
     public abstract String getDetails();
 }

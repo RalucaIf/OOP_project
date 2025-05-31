@@ -1,6 +1,7 @@
 package service;
 
-import model.interfaces.InterfaceUser;
+import model.User;
+import model.enums.UserRole;
 import repository.UserRepository;
 
 import java.sql.Connection;
@@ -14,23 +15,15 @@ public class UserService {
         this.userRepository = new UserRepository();
     }
 
-    public boolean createUser(InterfaceUser user, Connection connection) {
-        return userRepository.createUser(user, connection);
+    public void createUser(User user) {
+        userRepository.create(user);
     }
 
-    public Optional<InterfaceUser> getUser(int id, Connection connection) {
-        return userRepository.getUser(id,connection);
+    public List<User> getAllUsers() {
+        return userRepository.getAll();
     }
 
-    public List<InterfaceUser> getAllUsers(Connection connection) {
-        return userRepository.getAllUsers(connection);
-    }
-
-    public boolean updateUser(InterfaceUser user, Connection connection) {
-        return userRepository.updateUser(user, connection);
-    }
-
-    public boolean deleteUser(int id, Connection connection) {
-        return userRepository.deleteUser(id, connection);
+    public List<User> searchByRole(UserRole role) {
+        return userRepository.getByRole(role);
     }
 }

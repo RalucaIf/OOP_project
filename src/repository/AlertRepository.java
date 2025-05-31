@@ -2,115 +2,177 @@ package repository;
 
 import config.DBConfig;
 import model.AdministrativeAlert;
+import model.Alert;
 import model.SecurityAlert;
 import model.enums.AlertPriority;
 import model.enums.AlertStatus;
-import model.interfaces.InterfaceAlert;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AlertRepository {
+public class AlertRepository implements CRUDInterface<Alert> {
 
-    public void createAlert(InterfaceAlert alert, String specificDetail) {
-        String sql = """
-                    insert into alerts 
-                    (id, priority, status, type, specific_detail) 
-                    values (?, ?, ?, ?, ?)
-                    """;
+    @Override
+     public Alert create(Alert alert) {
+         String sql = """
+                 INSERT INTO alerts (id, priority, status, type, problem)
+                 VALUES (?, ?, ?, ?, ?);
+                 """;
+         try (Connection connection = DBConfig.getConnection();
+              PreparedStatement preparedStatement = connection.prepareStatement(sql)){
 
-        try (Connection connection = DBConfig.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setInt(1, alert.getId());
-            preparedStatement.setString(2, alert.getPriority().name());
-            preparedStatement.setString(3, alert.getStatus().name());
-            preparedStatement.setString(4, alert instanceof AdministrativeAlert ? "ADMINISTRATIVE" : "SECURITY");
-            preparedStatement.setString(5, specificDetail);
+             preparedStatement.setInt(1, alert.getId());
+             preparedStatement.setString(2, alert.getPriority().toString());
+             preparedStatement.setString(3, alert.getStatus().toString());
 
-            preparedStatement.executeUpdate();
-        }
-        catch (SQLException e) {
-            e.printStackTrace();
-        }
+             if (alert instanceof AdministrativeAlert) {
+                 preparedStatement.setString(4, "Administrative");
+                 preparedStatement.setString(5, ((AdministrativeAlert) alert).getAdministrativeProblem());
+             } else if (alert instanceof SecurityAlert){
+                 preparedStatement.setString(4, "Security");
+                 preparedStatement.setString(5, ((SecurityAlert) alert).getSecurityProblem());
+             } else {
+                 throw new IllegalArgumentException("Unsupported alert type");
+             }
+             preparedStatement.executeUpdate();
+             return alert;
+
+         } catch (SQLException e) {
+             throw new RuntimeException(e);
+         }
     }
 
-    public InterfaceAlert getAlert(int id) throws SQLException {
-        String sql = "select * from alerts where id = ?";
-
+    @Override
+    public Alert findById(int id) {
+        String sql = "SELECT * FROM alerts WHERE id = ?";
         try (Connection connection = DBConfig.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-
             preparedStatement.setInt(1, id);
 
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                if (resultSet.next()) {
-                    return parseAlertFromResultSet(resultSet);
+            try(ResultSet resultSet = preparedStatement.executeQuery()) {
+                if(resultSet.next()) {
+                    int alertId = resultSet.getInt(1);
+                    String priority = resultSet.getString(2);
+                    String status = resultSet.getString(3);
+                    String type = resultSet.getString(4);
+                    String problem = resultSet.getString(5);
+
+                    AlertPriority alertPriority = AlertPriority.valueOf(priority.toUpperCase());
+                    AlertStatus alertStatus = AlertStatus.valueOf(status.toUpperCase());
+                    if (type.equals("Administrative")) {
+                        return new AdministrativeAlert(alertId, alertPriority, alertStatus, problem);
+                    } else if (type.equals("Security")){
+                        return new SecurityAlert(alertId, alertPriority, alertStatus, problem);
+                    } else {throw new IllegalArgumentException("Unsupported alert type");}
                 }
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-        throw new SQLException("Alert with ID " + id + " not found.");
+        return null;
     }
 
-    public List<InterfaceAlert> getAllAlerts() throws SQLException {
-        String sql = "select * from alerts";
-        List<InterfaceAlert> alerts = new ArrayList<>();
+    @Override
+    public List<Alert> getAll() {
+        String sql = "SELECT * FROM alerts";
+        List<Alert> alerts = new ArrayList<>();
         try (Connection connection = DBConfig.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(sql);
-             ResultSet resultSet = preparedStatement.executeQuery()) {
+             ResultSet resultSet = preparedStatement.executeQuery()){
+            while(resultSet.next()) {
+                int alertId = resultSet.getInt(1);
+                String priority = resultSet.getString(2);
+                String status = resultSet.getString(3);
+                String type = resultSet.getString(4);
+                String problem = resultSet.getString(5);
 
-            while (resultSet.next()) {
-                alerts.add(parseAlertFromResultSet(resultSet));
+                AlertPriority alertPriority = AlertPriority.valueOf(priority.toUpperCase());
+                AlertStatus alertStatus = AlertStatus.valueOf(status.toUpperCase());
+                if (type.equals("Administrative")) {
+                    alerts.add(new AdministrativeAlert(alertId, alertPriority, alertStatus, problem));
+                } else if(type.equals("Security")){
+                    alerts.add(new SecurityAlert(alertId, alertPriority, alertStatus, problem));
+                } else {throw new IllegalArgumentException("Unsupported alert type");}
             }
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
         return alerts;
+
     }
 
-    public void updateAlert(InterfaceAlert alert, String specificDetail) throws SQLException {
-        String query = "update alerts set priority = ?, status = ?, type = ?, specific_detail = ? where id = ?";
-
-        try (Connection connection = DBConfig.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(query)) {
-
-            preparedStatement.setString(1, alert.getPriority().name());
-            preparedStatement.setString(2, alert.getStatus().name());
-            preparedStatement.setString(3, alert instanceof AdministrativeAlert ? "ADMINISTRATIVE" : "SECURITY");
-            preparedStatement.setString(4, specificDetail);
-            preparedStatement.setInt(5, alert.getId());
-
-            int rowsUpdated = preparedStatement.executeUpdate();
-            if (rowsUpdated == 0) {
-                throw new SQLException("No alert found with ID " + alert.getId());
-            }
-        }
-    }
-
-    public void deleteAlertById(int id) throws SQLException {
-        String sql = "delete from alerts where id = ?";
-
+    @Override
+    public void delete(int id){
+        String sql = "DELETE FROM alerts WHERE id = ?";
         try (Connection connection = DBConfig.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
             preparedStatement.setInt(1, id);
             int rowsDeleted = preparedStatement.executeUpdate();
-            if (rowsDeleted == 0) {
-                throw new SQLException("No alert found with ID " + id);
+
+            if(rowsDeleted > 0) {
+                System.out.println("Alert with id " + id + " deleted.");
+            } else{
+                System.out.println("No alert with id " + id + " found.");
             }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error deleting alert " + e.getMessage());
         }
     }
-    private InterfaceAlert parseAlertFromResultSet(ResultSet resultSet) throws SQLException {
-        int id = resultSet.getInt("id");
-        AlertPriority priority = AlertPriority.valueOf(resultSet.getString("priority"));
-        AlertStatus status = AlertStatus.valueOf(resultSet.getString("status"));
-        String type = resultSet.getString("type");
-        String specificDetail = resultSet.getString("specific_detail");
 
-        if (type.equals("ADMINISTRATIVE")) {
-            return new AdministrativeAlert(id, priority, status, specificDetail);
-        } else if (type.equals("SECURITY")) {
-            return new SecurityAlert(id, priority, status, specificDetail);
+    public void updateStatus(int id, AlertStatus status) {
+        String sql = "UPDATE alerts SET status = ? WHERE id = ?";
+        try (Connection connection = DBConfig.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, status.name());
+            preparedStatement.setInt(2, id);
+
+            int rowsUpdated = preparedStatement.executeUpdate();
+
+            if (rowsUpdated == 0) {
+                throw new RuntimeException("No alert found with ID: " + id);
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Error updating the status of alert with ID: " + id, e);
         }
-        throw new SQLException("Unknown alert type: " + type);
+    }
+
+    public List<Alert> getByStatus(AlertStatus status) {
+        String sql = "SELECT * FROM alerts WHERE status = ?";
+        List<Alert> alerts = new ArrayList<>();
+
+        try (Connection connection = DBConfig.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setString(1, status.name());
+
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                while (resultSet.next()) {
+                    int alertId = resultSet.getInt("id");
+                    String priority = resultSet.getString("priority");
+                    String alertStatus = resultSet.getString("status");
+                    String type = resultSet.getString("type");
+                    String problem = resultSet.getString("problem");
+
+                    AlertPriority alertPriority = AlertPriority.valueOf(priority.toUpperCase());
+                    AlertStatus alertStatusEnum = AlertStatus.valueOf(alertStatus.toUpperCase());
+
+                    if (type.equalsIgnoreCase("Administrative")) {
+                        alerts.add(new AdministrativeAlert(alertId, alertPriority, alertStatusEnum, problem));
+                    } else if (type.equalsIgnoreCase("Security")) {
+                        alerts.add(new SecurityAlert(alertId, alertPriority, alertStatusEnum, problem));
+                    } else {
+                        throw new IllegalArgumentException("Unsupported alert type: " + type);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error retrieving alerts by status: " + status, e);
+        }
+        return alerts;
     }
 }

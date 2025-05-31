@@ -1,119 +1,153 @@
 package repository;
 
-import exception.UserException;
+import config.DBConfig;
 import model.AdminUser;
-import model.HackerUser;
 import model.RegularUser;
+import model.User;
 import model.enums.UserRole;
-import model.interfaces.InterfaceUser;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
-public class UserRepository {
-    public boolean createUser(InterfaceUser user, Connection connection) {
-        String sql = """
-                    insert into users 
-                    (id, name, password, role) 
-                    values (?, ?, ?, ?)
-                    """;
-        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            // parameter binding
+public class UserRepository implements CRUDInterface<User> {
+
+    @Override
+    public User create(User user) {
+        String sql = "INSERT INTO users (id, username, password, role) VALUES (?, ?, ?, ?)";
+        try (Connection connection = DBConfig.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
             preparedStatement.setInt(1, user.getId());
             preparedStatement.setString(2, user.getName());
             preparedStatement.setString(3, user.getPassword());
-            preparedStatement.setString(4, user.getRole().name());
-            // execute query
-            preparedStatement.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
 
-    }
-
-    public Optional<InterfaceUser> getUser(int id, Connection connection) {
-        String sql = "select * from users where id = ?";
-        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setInt(1, id);
-            ResultSet resultSet = preparedStatement.executeQuery();
-            if (resultSet.next()) {
-                int userId = resultSet.getInt("id");
-                String name = resultSet.getString("name");
-                String password = resultSet.getString("password");
-                UserRole role = UserRole.valueOf(resultSet.getString("role"));
-
-                InterfaceUser user = switch (role) {
-                    case ADMIN -> new AdminUser(userId, name, password);
-                    case REGULAR_USER -> new RegularUser(userId, name, password);
-                    case HACKER -> new HackerUser(userId, name, "unknown", password);
-                };
-
-                return Optional.of(user);
+            if (user instanceof AdminUser) {
+                preparedStatement.setString(4, "ADMIN");
+            } else if (user instanceof RegularUser) {
+                preparedStatement.setString(4, "REGULAR_USER");
             } else {
-                throw new UserException();
+                throw new IllegalArgumentException("Unsupported user type");
             }
-        } catch (SQLException | UserException e) {
-            e.printStackTrace();
+
+            preparedStatement.executeUpdate();
+            return user;
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Error creating user: " + user.getName(), e);
         }
-        return Optional.empty();
     }
 
-    public List<InterfaceUser> getAllUsers(Connection connection) {
-        String sql = "select * from users";
-        List<InterfaceUser> users = new ArrayList<>();
+    @Override
+    public User findById(int id) {
+        String sql = "SELECT * FROM users WHERE id = ?";
+        try (Connection connection = DBConfig.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
 
-        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+            preparedStatement.setInt(1, id);
+
             try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                while (resultSet.next()) { // Process all rows
+                if (resultSet.next()) {
                     int userId = resultSet.getInt("id");
-                    String name = resultSet.getString("name");
+                    String username = resultSet.getString("username");
                     String password = resultSet.getString("password");
-                    UserRole role = UserRole.valueOf(resultSet.getString("role"));
+                    String role = resultSet.getString("role").toUpperCase();
 
-                    InterfaceUser user = switch (role) {
-                        case ADMIN -> new AdminUser(userId, name, password);
-                        case REGULAR_USER -> new RegularUser(userId, name, password);
-                        case HACKER -> new HackerUser(userId, name, "unknown", password);
-                    };
-
-                    users.add(user);
+                    if (role.equals("ADMIN")) {
+                        return new AdminUser(userId, username, password);
+                    } else if (role.equals("REGULAR_USER")) {
+                        return new RegularUser(userId, username, password);
+                    } else {
+                        throw new IllegalArgumentException("Unsupported user role: " + role);
+                    }
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Error finding user by ID: " + id, e);
+        }
+
+        return null;
+    }
+
+    @Override
+    public List<User> getAll() {
+        String sql = "SELECT * FROM users";
+        List<User> users = new ArrayList<>();
+
+        try (Connection connection = DBConfig.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql);
+             ResultSet resultSet = preparedStatement.executeQuery()) {
+
+            while (resultSet.next()) {
+                int userId = resultSet.getInt("id");
+                String username = resultSet.getString("username");
+                String password = resultSet.getString("password");
+                String role = resultSet.getString("role").toUpperCase();
+
+                if (role.equals("ADMIN")) {
+                    users.add(new AdminUser(userId, username, password));
+                } else if (role.equals("REGULAR_USER")) {
+                    users.add(new RegularUser(userId, username, password));
+                } else {
+                    throw new IllegalArgumentException("Unsupported user role: " + role);
+                }
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Error retrieving all users", e);
+        }
+
+        return users;
+    }
+
+    @Override
+    public void delete(int id) {
+        String sql = "DELETE FROM users WHERE id = ?";
+        try (Connection connection = DBConfig.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+
+            preparedStatement.setInt(1, id);
+            preparedStatement.executeUpdate();
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Error deleting user with ID: " + id, e);
+        }
+    }
+
+    public List<User> getByRole(UserRole role) {
+        String sql = "SELECT * FROM users WHERE role = ?";
+        List<User> users = new ArrayList<>();
+
+        try (Connection connection = DBConfig.getConnection();
+             PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
+
+            preparedStatement.setString(1, role.name());
+
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                while (resultSet.next()) {
+                    int userId = resultSet.getInt("id");
+                    String name = resultSet.getString("username");
+                    String password = resultSet.getString("password");
+                    String roleString = resultSet.getString("role").toUpperCase();
+
+                    if (roleString.equals("ADMIN")) {
+                        users.add(new AdminUser(userId, name, password));
+                    } else if (roleString.equals("REGULAR_USER")) {
+                        users.add(new RegularUser(userId, name, password));
+                    } else if (roleString.equals("HACKER")) {
+                        throw new UnsupportedOperationException("Hacker role is not supported yet.");
+                    } else {
+                        throw new IllegalArgumentException("Unsupported user role: " + roleString);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error retrieving users by role: " + role.name(), e);
         }
         return users;
     }
 
-    public boolean updateUser(InterfaceUser user, Connection connection) {
-        String sql = "update users set name = ?, password = ?, role = ? where id = ?";
-        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setString(1, user.getName());
-            preparedStatement.setString(2, user.getPassword());
-            preparedStatement.setString(3, user.getRole().name());
-            preparedStatement.setInt(4, user.getId());
 
-            preparedStatement.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
-    }
-
-    public boolean deleteUser(int id, Connection connection) {
-        String sql = "delete from users where id = ?";
-        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setInt(1, id);
-            int rowsAffected = preparedStatement.executeUpdate();
-            if(rowsAffected == 0){
-                throw new UserException();
-            }
-        } catch (SQLException | UserException e) {
-            e.printStackTrace();
-        }
-        return false;
-    }
 }

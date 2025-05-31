@@ -1,50 +1,52 @@
 package service;
 
+import exception.AlertNotFoundException;
 import model.AdministrativeAlert;
+import model.Alert;
 import model.SecurityAlert;
-import model.interfaces.InterfaceAlert;
+import model.enums.AlertPriority;
+import model.enums.AlertStatus;
 import repository.AlertRepository;
 
 import java.sql.SQLException;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
 public class AlertService {
-
     private final AlertRepository alertRepository;
 
-    public AlertService() {
-        this.alertRepository = new AlertRepository();
+    public AlertService(AlertRepository alertRepository) {
+        this.alertRepository = alertRepository;
+    }
+    public void createAlert(Alert alert) {
+        alertRepository.create(alert);
     }
 
-    public void createAlert(InterfaceAlert alert) throws SQLException {
-        if (alert instanceof AdministrativeAlert) {
-            alertRepository.createAlert(alert, ((AdministrativeAlert) alert).getAdministrativeProblem());
-        } else if (alert instanceof SecurityAlert) {
-            alertRepository.createAlert(alert, ((SecurityAlert) alert).getSecurityProblem());
-        } else {
-            throw new IllegalArgumentException("Unsupported alert type");
-        }
+    public void escalateAlert(int id) throws AlertNotFoundException {
+        Alert alert = alertRepository.findById(id);
+        if (alert == null) throw new AlertNotFoundException("Alert not found");
+        alert.escalate();
+        alertRepository.updateStatus(id, alert.getStatus());
     }
 
-    public InterfaceAlert getAlert(int id) throws SQLException {
-        return alertRepository.getAlert(id);
+    public void closeAlert(int id) throws AlertNotFoundException {
+        Alert alert = alertRepository.findById(id);
+        if (alert == null) throw new AlertNotFoundException("Alert not found");
+        alert.setStatus(AlertStatus.CLOSED);
+        alertRepository.updateStatus(id, AlertStatus.CLOSED);
     }
 
-    public List<InterfaceAlert> getAllAlerts() throws SQLException {
-        return alertRepository.getAllAlerts();
+    public List<Alert> getByStatus(AlertStatus status) {
+        return alertRepository.getByStatus(status);
     }
 
-    public void updateAlert(InterfaceAlert alert) throws SQLException {
-        if (alert instanceof AdministrativeAlert) {
-            alertRepository.updateAlert(alert, ((AdministrativeAlert) alert).getAdministrativeProblem());
-        } else if (alert instanceof SecurityAlert) {
-            alertRepository.updateAlert(alert, ((SecurityAlert) alert).getSecurityProblem());
-        } else {
-            throw new IllegalArgumentException("Unsupported alert type");
-        }
-    }
-
-    public void deleteAlertById(int id) throws SQLException {
-        alertRepository.deleteAlertById(id);
+    public Set<Alert> getSortedAlertsByPriorityThenTime() {
+        TreeSet<Alert> sorted = new TreeSet<>(
+                Comparator.comparing(Alert::getPriority).reversed()
+        );
+        sorted.addAll(alertRepository.getAll());
+        return sorted;
     }
 }

@@ -1,250 +1,166 @@
 package main;
 
-import config.DBConfig;
-import model.AdministrativeAlert;
-import model.HackerUser;
-import model.RegularUser;
-import model.SecurityAlert;
+import model.*;
 import model.enums.AlertPriority;
 import model.enums.AlertStatus;
 import model.enums.UserRole;
-import model.interfaces.InterfaceAlert;
-import model.interfaces.InterfaceUser;
 import service.AlertService;
 import service.UserService;
 
-import java.sql.Connection;
 import java.util.List;
 import java.util.Scanner;
+import java.util.Set;
 
 public class Main {
     public static void main(String[] args) {
+        AlertService alertService = new AlertService(new repository.AlertRepository());
+        UserService userService = new UserService(new repository.UserRepository());
         Scanner scanner = new Scanner(System.in);
-        AlertService alertService = new AlertService();
-        UserService userService = new UserService(null);
 
-        try (Connection connection = DBConfig.getConnection()) {
-            boolean running = true;
-
-            while (running) {
-                System.out.println("===== MAIN MENU =====");
-                System.out.println("1. Manage Users");
-                System.out.println("2. Manage Alerts");
-                System.out.println("3. Exit");
-                System.out.print("Select an option: ");
-                String mainChoice = scanner.nextLine();
-
-                switch (mainChoice) {
-                    case "1":
-                        manageUsers(scanner, userService, connection);
-                        break;
-                    case "2":
-                        manageAlerts(scanner, alertService);
-                        break;
-                    case "3":
-                        System.out.println("Exiting program...");
-                        running = false;
-                        break;
-                    default:
-                        System.out.println("Invalid option. Please try again.");
-                }
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private static void manageUsers(Scanner scanner, UserService userService, Connection connection) {
         while (true) {
-            System.out.println("\n===== USER MANAGEMENT =====");
-            System.out.println("1. Create User");
-            System.out.println("2. View User by ID");
-            System.out.println("3. View All Users");
-            System.out.println("4. Update User");
-            System.out.println("5. Delete User");
-            System.out.println("6. Back to Main Menu");
-            System.out.print("Select an option: ");
-            String choice = scanner.nextLine();
+            System.out.println("\n===== MENU =====");
+            System.out.println("1. Create a User");
+            System.out.println("2. View All Users");
+            System.out.println("3. Search Users by Role");
+            System.out.println("4. Create an Alert");
+            System.out.println("5. View All Alerts (Sorted by Priority)");
+            System.out.println("6. Escalate an Alert");
+            System.out.println("7. Close an Alert");
+            System.out.println("8. View Alerts by Status");
+            System.out.println("9. Exit");
+            System.out.print("Enter your choice: ");
 
-            try {
-                switch (choice) {
-                    case "1":
-                        System.out.print("Enter User ID: ");
-                        int userId = Integer.parseInt(scanner.nextLine());
-                        System.out.print("Enter User Name: ");
-                        String userName = scanner.nextLine();
-                        System.out.print("Enter User Password: ");
-                        String userPassword = scanner.nextLine();
-                        System.out.println("Select User Role (1 = ADMIN, 2 = REGULAR_USER, 3 = HACKER): ");
-                        int roleChoice = Integer.parseInt(scanner.nextLine());
-                        UserRole userRole = switch (roleChoice) {
-                            case 1 -> UserRole.ADMIN;
-                            case 2 -> UserRole.REGULAR_USER;
-                            case 3 -> UserRole.HACKER;
-                            default -> throw new IllegalArgumentException("Invalid role selected");
-                        };
+            int choice = scanner.nextInt();
+            scanner.nextLine();
 
-                        InterfaceUser newUser = switch (userRole) {
-                            case ADMIN -> new RegularUser(userId, userName, userPassword);
-                            case REGULAR_USER -> new RegularUser(userId, userName, userPassword);
-                            case HACKER -> new HackerUser(userId, userName, "SQL Injection", userPassword);
-                        };
+            switch (choice) {
+                case 1:
+                    // create user
+                    System.out.print("Enter User ID: ");
+                    int userId = scanner.nextInt();
+                    scanner.nextLine();
+                    System.out.print("Enter User Name: ");
+                    String userName = scanner.nextLine();
+                    System.out.print("Enter Password: ");
+                    String password = scanner.nextLine();
+                    System.out.println("Select User Role (1. ADMIN, 2. REGULAR_USER, 3. HACKER): ");
+                    int roleChoice = scanner.nextInt();
+                    UserRole role = (roleChoice == 1) ? UserRole.ADMIN :
+                            (roleChoice == 2) ? UserRole.REGULAR_USER : UserRole.HACKER;
 
-                        if (userService.createUser(newUser, connection)) {
-                            System.out.println("User created");
-                        } else {
-                            System.out.println("Failed to create user.");
-                        }
-                        break;
+                    User user = (role == UserRole.ADMIN) ? new AdminUser(userId, userName, password) :
+                            (role == UserRole.REGULAR_USER) ? new RegularUser(userId, userName, password) :
+                                    new model.HackerUser(userId, userName, password);
 
-                    case "2":
-                        System.out.print("Enter User ID to retrieve: ");
-                        userId = Integer.parseInt(scanner.nextLine());
-                        userService.getUser(userId, connection)
-                                .ifPresentOrElse(
-                                        user -> System.out.println("User: " + user),
-                                        () -> System.out.println("User not found")
-                                );
-                        break;
+                    userService.createUser(user);
+                    System.out.println("User created successfully!");
+                    break;
 
-                    case "3":
-                        List<InterfaceUser> allUsers = userService.getAllUsers(connection);
-                        allUsers.forEach(System.out::println);
-                        break;
+                case 2:
+                    // view users
+                    List<User> users = userService.getAllUsers();
+                    System.out.println("All Users:");
+                    for (User u : users) {
+                        System.out.println("ID: " + u.getId() + ", Name: " + u.getName() + ", Role: " + u.getRole());
+                    }
+                    break;
 
-                    case "4":
-                        System.out.print("Enter User ID to update: ");
-                        userId = Integer.parseInt(scanner.nextLine());
-                        System.out.print("Enter New User Name: ");
-                        String newName = scanner.nextLine();
-                        System.out.print("Enter New User Password: ");
-                        String newPassword = scanner.nextLine();
+                case 3:
+                    // search user by role
+                    System.out.println("Enter Role to Search (1. ADMIN, 2. REGULAR_USER, 3. HACKER): ");
+                    int roleSearchChoice = scanner.nextInt();
+                    UserRole searchRole = (roleSearchChoice == 1) ? UserRole.ADMIN :
+                            (roleSearchChoice == 2) ? UserRole.REGULAR_USER : UserRole.HACKER;
+                    List<User> roleUsers = userService.searchByRole(searchRole);
+                    System.out.println("Users with role " + searchRole + ":");
+                    for (User u : roleUsers) {
+                        System.out.println("ID: " + u.getId() + ", Name: " + u.getName());
+                    }
+                    break;
 
-                        InterfaceUser userToUpdate = new RegularUser(userId, newName, newPassword);
-                        if (userService.updateUser(userToUpdate, connection)) {
-                            System.out.println("User updated");
-                        } else {
-                            System.out.println("Failed to update user.");
-                        }
-                        break;
+                case 4:
+                    // create alert
+                    System.out.print("Enter Alert ID: ");
+                    int alertId = scanner.nextInt();
+                    scanner.nextLine();
+                    System.out.println("Select Alert Type (1. Administrative, 2. Security): ");
+                    int alertType = scanner.nextInt();
+                    scanner.nextLine();
+                    System.out.println("Select Alert Priority (1. LOW, 2. MEDIUM, 3. HIGH, 4. CRITICAL): ");
+                    int priorityChoice = scanner.nextInt();
+                    scanner.nextLine();
+                    AlertPriority priority = (priorityChoice == 1) ? AlertPriority.LOW :
+                            (priorityChoice == 2) ? AlertPriority.MEDIUM :
+                                    (priorityChoice == 3) ? AlertPriority.HIGH : AlertPriority.CRITICAL;
 
-                    case "5":
-                        System.out.print("Enter User ID to delete: ");
-                        userId = Integer.parseInt(scanner.nextLine());
-                        if (userService.deleteUser(userId, connection)) {
-                            System.out.println("User deleted");
-                        } else {
-                            System.out.println("Failed to delete user.");
-                        }
-                        break;
+                    System.out.print("Enter Alert Issue: ");
+                    String issue = scanner.nextLine();
 
-                    case "6":
-                        return;
+                    if (alertType == 1) {
+                        AdministrativeAlert adminAlert = new AdministrativeAlert(alertId, priority, AlertStatus.NEW, issue);
+                        alertService.createAlert(adminAlert);
+                    } else {
+                        SecurityAlert securityAlert = new SecurityAlert(alertId, priority, AlertStatus.NEW, issue);
+                        alertService.createAlert(securityAlert);
+                    }
+                    System.out.println("Alert created successfully!");
+                    break;
 
-                    default:
-                        System.out.println("Invalid option. Please try again.");
-                }
-            } catch (Exception e) {
-                System.err.println("An error occurred: " + e.getMessage());
-            }
-        }
-    }
+                case 5:
+                    // view alerts - priority
+                    Set<Alert> sortedAlerts = alertService.getSortedAlertsByPriorityThenTime();
+                    System.out.println("All Alerts (Sorted by Priority):");
+                    for (Alert alert : sortedAlerts) {
+                        System.out.println(alert.getDetails());
+                    }
+                    break;
 
-    private static void manageAlerts(Scanner scanner, AlertService alertService) {
-        while (true) {
-            System.out.println("\n===== ALERT MANAGEMENT =====");
-            System.out.println("1. Create Alert");
-            System.out.println("2. View Alert by ID");
-            System.out.println("3. View All Alerts");
-            System.out.println("4. Update Alert");
-            System.out.println("5. Delete Alert");
-            System.out.println("6. Back to Main Menu");
-            System.out.print("Select an option: ");
-            String choice2 = scanner.nextLine();
+                case 6:
+                    // escalate
+                    System.out.print("Enter Alert ID to Escalate: ");
+                    int escalateId = scanner.nextInt();
+                    try {
+                        alertService.escalateAlert(escalateId);
+                        System.out.println("Alert escalated successfully!");
+                    } catch (Exception e) {
+                        System.out.println("Error: " + e.getMessage());
+                    }
+                    break;
 
-            try {
-                switch (choice2) {
-                    case "1":
-                        System.out.print("Enter Alert ID: ");
-                        int alertId = Integer.parseInt(scanner.nextLine());
-                        System.out.print("Enter Alert Priority (LOW, MEDIUM, HIGH, CRITICAL): ");
-                        AlertPriority priority = AlertPriority.valueOf(scanner.nextLine().toUpperCase());
-                        System.out.print("Enter Alert Status (NEW, IN_PROGRESS, CLOSED): ");
-                        AlertStatus status = AlertStatus.valueOf(scanner.nextLine().toUpperCase());
-                        System.out.print("Enter Alert Type (ADMINISTRATIVE or SECURITY): ");
-                        String type = scanner.nextLine().toUpperCase();
+                case 7:
+                    // close an alert
+                    System.out.print("Enter Alert ID to Close: ");
+                    int closeId = scanner.nextInt();
+                    try {
+                        alertService.closeAlert(closeId);
+                        System.out.println("Alert closed successfully!");
+                    } catch (Exception e) {
+                        System.out.println("Error: " + e.getMessage());
+                    }
+                    break;
 
-                        InterfaceAlert newAlert;
-                        if (type.equals("ADMINISTRATIVE")) {
-                            System.out.print("Enter Administrative Problem: ");
-                            String problem = scanner.nextLine();
-                            newAlert = new AdministrativeAlert(alertId, priority, status, problem);
-                        } else if (type.equals("SECURITY")) {
-                            System.out.print("Enter Security Problem: ");
-                            String problem = scanner.nextLine();
-                            newAlert = new SecurityAlert(alertId, priority, status, problem);
-                        } else {
-                            throw new IllegalArgumentException("Invalid alert type");
-                        }
+                case 8:
+                    // alerts by status
+                    System.out.println("Select Alert Status to View (1. NEW, 2. IN_PROGRESS, 3. CLOSED): ");
+                    int statusChoice = scanner.nextInt();
+                    AlertStatus status = (statusChoice == 1) ? AlertStatus.NEW :
+                            (statusChoice == 2) ? AlertStatus.IN_PROGRESS : AlertStatus.CLOSED;
+                    List<Alert> statusAlerts = alertService.getByStatus(status);
+                    System.out.println("Alerts with status " + status + ":");
+                    for (Alert alert : statusAlerts) {
+                        System.out.println(alert.getDetails());
+                    }
+                    break;
 
-                        alertService.createAlert(newAlert);
-                        System.out.println("Alert created");
-                        break;
+                case 9:
+                    // exit
+                    System.out.println("Exiting the program. Goodbye!");
+                    scanner.close();
+                    System.exit(0);
+                    break;
 
-                    case "2":
-                        System.out.print("Enter Alert ID to retrieve: ");
-                        alertId = Integer.parseInt(scanner.nextLine());
-                        InterfaceAlert retrievedAlert = alertService.getAlert(alertId);
-                        System.out.println("Alert Details: " + retrievedAlert.getDetails());
-                        break;
-
-                    case "3":
-                        List<InterfaceAlert> allAlerts = alertService.getAllAlerts();
-                        allAlerts.forEach(alert -> System.out.println(alert.getDetails()));
-                        break;
-
-                    case "4":
-                        System.out.print("Enter Alert ID to update: ");
-                        alertId = Integer.parseInt(scanner.nextLine());
-                        System.out.print("Enter New Alert Priority (LOW, MEDIUM, HIGH, CRITICAL): ");
-                        priority = AlertPriority.valueOf(scanner.nextLine().toUpperCase());
-                        System.out.print("Enter New Alert Status (NEW, IN_PROGRESS, CLOSED): ");
-                        status = AlertStatus.valueOf(scanner.nextLine().toUpperCase());
-                        System.out.print("Enter Updated Alert Type (ADMINISTRATIVE or SECURITY): ");
-                        type = scanner.nextLine().toUpperCase();
-
-                        InterfaceAlert alertToUpdate;
-                        if (type.equals("ADMINISTRATIVE")) {
-                            System.out.print("Enter Updated Administrative Problem: ");
-                            String updatedProblem = scanner.nextLine();
-                            alertToUpdate = new AdministrativeAlert(alertId, priority, status, updatedProblem);
-                        } else if (type.equals("SECURITY")) {
-                            System.out.print("Enter Updated Security Problem: ");
-                            String updatedProblem = scanner.nextLine();
-                            alertToUpdate = new SecurityAlert(alertId, priority, status, updatedProblem);
-                        } else {
-                            throw new IllegalArgumentException("Invalid alert type");
-                        }
-
-                        alertService.updateAlert(alertToUpdate);
-                        System.out.println("Alert updated");
-                        break;
-
-                    case "5":
-                        System.out.print("Enter Alert ID to delete: ");
-                        alertId = Integer.parseInt(scanner.nextLine());
-                        alertService.deleteAlertById(alertId);
-                        System.out.println("Alert deleted");
-                        break;
-
-                    case "6":
-                        return;
-
-                    default:
-                        System.out.println("Invalid option. Please try again.");
-                }
-            } catch (Exception e) {
-                System.err.println("An error occurred: " + e.getMessage());
+                default:
+                    System.out.println("Invalid choice. Please try again.");
             }
         }
     }
