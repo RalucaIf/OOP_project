@@ -10,6 +10,7 @@ import java.util.Optional;
 
 public class UserService {
     private final UserRepository userRepository;
+    private final AuditService auditService = AuditService.getInstance();
 
     public UserService(UserRepository userRepository) {
         this.userRepository = new UserRepository();
@@ -17,13 +18,18 @@ public class UserService {
 
     public void createUser(User user) {
         userRepository.create(user);
+        auditService.writeToCSV("User created: " + user.getName());
     }
 
     public List<User> getAllUsers() {
-        return userRepository.getAll();
+        List<User> users = userRepository.getAll();
+        auditService.writeToCSV("Get all users");
+        return users;
     }
 
     public List<User> searchByRole(UserRole role) {
-        return userRepository.getByRole(role);
+        List<User> users = userRepository.getByRole(role);
+        auditService.writeToCSV("Searched by role");
+        return users;
     }
 }

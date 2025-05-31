@@ -16,12 +16,14 @@ import java.util.TreeSet;
 
 public class AlertService {
     private final AlertRepository alertRepository;
+    private final AuditService auditService = AuditService.getInstance();
 
     public AlertService(AlertRepository alertRepository) {
         this.alertRepository = alertRepository;
     }
     public void createAlert(Alert alert) {
         alertRepository.create(alert);
+        auditService.writeToCSV("Alert created: " + alert.getDetails());
     }
 
     public void escalateAlert(int id) throws AlertNotFoundException {
@@ -29,6 +31,7 @@ public class AlertService {
         if (alert == null) throw new AlertNotFoundException("Alert not found");
         alert.escalate();
         alertRepository.updateStatus(id, alert.getStatus());
+        auditService.writeToCSV("Alert escalated: " + alert.getDetails());
     }
 
     public void closeAlert(int id) throws AlertNotFoundException {
@@ -36,9 +39,11 @@ public class AlertService {
         if (alert == null) throw new AlertNotFoundException("Alert not found");
         alert.setStatus(AlertStatus.CLOSED);
         alertRepository.updateStatus(id, AlertStatus.CLOSED);
+        auditService.writeToCSV("Alert closed: " + alert.getDetails());
     }
 
     public List<Alert> getByStatus(AlertStatus status) {
+        auditService.writeToCSV("Get alerts by status");
         return alertRepository.getByStatus(status);
     }
 
