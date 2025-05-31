@@ -1,6 +1,7 @@
 package service;
 
 import exception.AlertNotFoundException;
+import exception.InvalidDataException;
 import model.AdministrativeAlert;
 import model.Alert;
 import model.SecurityAlert;
@@ -21,7 +22,10 @@ public class AlertService {
     public AlertService(AlertRepository alertRepository) {
         this.alertRepository = alertRepository;
     }
-    public void createAlert(Alert alert) {
+    public void createAlert(Alert alert) throws InvalidDataException {
+        if (alert == null || alert.getPriority() == null || alert.getDetails() == null) {
+            throw new InvalidDataException("Invalid alert data");
+        }
         alertRepository.create(alert);
         auditService.writeToCSV("Alert created: " + alert.getDetails());
     }
