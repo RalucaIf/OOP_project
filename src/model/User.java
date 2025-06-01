@@ -3,7 +3,7 @@ package model;
 import model.enums.UserRole;
 
 public abstract class User {
-    private final int id;
+    private int id;
     private final String name;
     private String password;
     private UserRole role;
@@ -38,4 +38,8 @@ public abstract class User {
 
     // methods
     public abstract void doSomething(String action);
+
+    public void setId(int id) {
+        this.id = id;
+    }
 }

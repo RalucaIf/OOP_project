@@ -26,5 +26,10 @@ public class SecurityAlert extends Alert {
         return "Security Alert: " + getId() + " affecting: " + securityProblem +
                 " [Priority: " + getPriority() + ", Status: " + getStatus() + "]";
     }
+    @Override
+    public String toString() {
+        return getDetails();
+    }
+
 
 }

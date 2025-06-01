@@ -19,26 +19,30 @@ public class AlertRepository implements CRUDInterface<Alert> {
     @Override
      public Alert create(Alert alert) {
          String sql = """
-                 INSERT INTO alerts (id, priority, status, type, problem)
-                 VALUES (?, ?, ?, ?, ?);
+                 INSERT INTO alerts (priority, status, type, problem)
+                 VALUES (?, ?, ?, ?) RETURNING id;
                  """;
          try (Connection connection = DBConfig.getConnection();
               PreparedStatement preparedStatement = connection.prepareStatement(sql)){
 
-             preparedStatement.setInt(1, alert.getId());
-             preparedStatement.setString(2, alert.getPriority().toString());
-             preparedStatement.setString(3, alert.getStatus().toString());
+             // preparedStatement.setInt(1, alert.getId());
+             preparedStatement.setString(1, alert.getPriority().toString());
+             preparedStatement.setString(2, alert.getStatus().toString());
 
              if (alert instanceof AdministrativeAlert) {
-                 preparedStatement.setString(4, "Administrative");
-                 preparedStatement.setString(5, ((AdministrativeAlert) alert).getAdministrativeProblem());
+                 preparedStatement.setString(3, "Administrative");
+                 preparedStatement.setString(4, ((AdministrativeAlert) alert).getAdministrativeProblem());
              } else if (alert instanceof SecurityAlert){
-                 preparedStatement.setString(4, "Security");
-                 preparedStatement.setString(5, ((SecurityAlert) alert).getSecurityProblem());
+                 preparedStatement.setString(3, "Security");
+                 preparedStatement.setString(4, ((SecurityAlert) alert).getSecurityProblem());
              } else {
                  throw new IllegalArgumentException("Unsupported alert type");
              }
-             preparedStatement.executeUpdate();
+             try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                 if (resultSet.next()) {
+                     alert.setId(resultSet.getInt("id")); // Retrieve and set the generated ID
+                 }
+             }
              return alert;
 
          } catch (SQLException e) {
@@ -92,9 +96,9 @@ public class AlertRepository implements CRUDInterface<Alert> {
 
                 AlertPriority alertPriority = AlertPriority.valueOf(priority.toUpperCase());
                 AlertStatus alertStatus = AlertStatus.valueOf(status.toUpperCase());
-                if (type.equals("Administrative")) {
+                if (type.equalsIgnoreCase("Administrative")) {
                     alerts.add(new AdministrativeAlert(alertId, alertPriority, alertStatus, problem));
-                } else if(type.equals("Security")){
+                } else if(type.equalsIgnoreCase("Security")){
                     alerts.add(new SecurityAlert(alertId, alertPriority, alertStatus, problem));
                 } else {throw new IllegalArgumentException("Unsupported alert type");}
             }

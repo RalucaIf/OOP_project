@@ -53,4 +53,17 @@ public class UserService {
         auditService.writeToCSV("Searched by role");
         return users;
     }
+
+    public User authenticate(String username, String password) throws UserNotFoundException {
+        for (User user : userRepository.getAll()) {
+            if (user.getName().equalsIgnoreCase(username)) {
+                if (user.getPassword().equals(password)) {
+                    return user;
+                }
+                throw new UserNotFoundException("Password is incorrect for user: " + username);
+            }
+        }
+        throw new UserNotFoundException("User not found with username: " + username);
+    }
+
 }

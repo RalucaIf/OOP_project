@@ -26,4 +26,8 @@ public class AdministrativeAlert extends Alert {
         return "Administrative Alert: " + getId() + " affecting: " + administrativeProblem +
                 " [Priority: " + getPriority() + ", Status: " + getStatus() + "]";
     }
+    @Override
+    public String toString() {
+        return getDetails();
+    }
 }

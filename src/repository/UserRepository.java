@@ -17,22 +17,26 @@ public class UserRepository implements CRUDInterface<User> {
 
     @Override
     public User create(User user) {
-        String sql = "INSERT INTO users (id, username, password, role) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO users ( username, password, role) VALUES (?, ?, ?) RETURNING id";
         try (Connection connection = DBConfig.getConnection();
              PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setInt(1, user.getId());
-            preparedStatement.setString(2, user.getName());
-            preparedStatement.setString(3, user.getPassword());
+            // preparedStatement.setInt(1, user.getId());
+            preparedStatement.setString(1, user.getName());
+            preparedStatement.setString(2, user.getPassword());
 
             if (user instanceof AdminUser) {
-                preparedStatement.setString(4, "ADMIN");
+                preparedStatement.setString(3, "ADMIN");
             } else if (user instanceof RegularUser) {
-                preparedStatement.setString(4, "REGULAR_USER");
+                preparedStatement.setString(3, "REGULAR_USER");
             } else {
                 throw new IllegalArgumentException("Unsupported user type");
             }
-
-            preparedStatement.executeUpdate();
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if (resultSet.next()) {
+                    // Set the generated ID on the user object
+                    user.setId(resultSet.getInt("id"));
+                }
+            }
             return user;
 
         } catch (SQLException e) {

@@ -4,7 +4,7 @@ import model.enums.AlertPriority;
 import model.enums.AlertStatus;
 
 public abstract class Alert  {
-    private final int id;
+    private int id;
     private AlertPriority priority;
     private AlertStatus status;
 
@@ -37,4 +37,13 @@ public abstract class Alert  {
     // methods
     public abstract void escalate();
     public abstract String getDetails();
+
+    @Override
+    public String toString() {
+        return getDetails();
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
 }
