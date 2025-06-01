@@ -2,14 +2,12 @@ package service;
 
 import exception.AlertNotFoundException;
 import exception.InvalidDataException;
-import model.AdministrativeAlert;
-import model.Alert;
-import model.SecurityAlert;
-import model.enums.AlertPriority;
+import model.*;
 import model.enums.AlertStatus;
 import repository.AlertRepository;
 
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
@@ -17,7 +15,7 @@ import java.util.TreeSet;
 
 public class AlertService {
     private final AlertRepository alertRepository;
-    private final AuditService auditService = AuditService.getInstance();
+    private final AuditService auditService = AuditService.getInstance(); // singleton
 
     public AlertService(AlertRepository alertRepository) {
         this.alertRepository = alertRepository;
@@ -57,5 +55,18 @@ public class AlertService {
         );
         sorted.addAll(alertRepository.getAll());
         return sorted;
+    }
+    // create alert using records
+    public void createAlert(Alert alert, Device sourceDevice) throws InvalidDataException {
+        if (alert == null || alert.getPriority() == null || alert.getDetails() == null) {
+            throw new InvalidDataException("Invalid alert data");
+        }
+        alertRepository.create(alert);
+
+        Event event = new Event("ALERT_CREATED", sourceDevice, LocalDateTime.now());
+        auditService.writeToCSV("Event: " + event.type() + ", Source: "
+                + sourceDevice.name() + " (" + sourceDevice.ip() + ")");
+        System.out.println("Alert created: " + alert.getDetails());
+        System.out.println("Event logged: " + event);
     }
 }

@@ -152,6 +152,4 @@ public class UserRepository implements CRUDInterface<User> {
         }
         return users;
     }
-
-
 }

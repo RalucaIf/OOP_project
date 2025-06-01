@@ -8,7 +8,6 @@ import model.enums.AlertStatus;
 import model.enums.UserRole;
 import repository.AlertRepository;
 import service.AlertService;
-import service.AuditService;
 import service.UserService;
 
 import java.util.List;
@@ -16,7 +15,7 @@ import java.util.Scanner;
 import java.util.Set;
 
 public class main {
-    private static final AlertRepository alertRepository = new AlertRepository(); // Initialize the repository
+    private static final AlertRepository alertRepository = new AlertRepository();
     private static final AlertService alertService = new AlertService(alertRepository);
     private static final UserService userService = new UserService(null);
     private static final Scanner scanner = new Scanner(System.in);
@@ -30,13 +29,13 @@ public class main {
                 case 1 -> login();
                 case 2 -> register();
                 case 3 -> exitApplication();
-                default -> System.out.println("Invalid choice. Please try again!");
+                default -> System.out.println("Invalid choice. Please try again.");
             }
         }
     }
 
     private static void printMainMenu() {
-        System.out.println("\n==== MAIN MENU ====");
+        System.out.println("\n===== MAIN MENU =====");
         System.out.println("1. Login");
         System.out.println("2. Register");
         System.out.println("3. Exit");
@@ -93,7 +92,7 @@ public class main {
 
     private static void adminMenu(AdminUser admin) {
         while (true) {
-            System.out.println("\n==== ADMIN MENU ====");
+            System.out.println("\n===== ADMIN MENU =====");
             System.out.println("1. Create a new user");
             System.out.println("2. Get all users");
             System.out.println("3. Delete a user by ID");
@@ -101,7 +100,7 @@ public class main {
             System.out.println("5. Create a new alert");
             System.out.println("6. Delete an alert by ID");
             System.out.println("7. Get alerts by status");
-            System.out.println("8. Get sorted alerts (by priority)");
+            System.out.println("8. Get sorted alerts by priority");
             System.out.println("9. Logout");
             System.out.print("Enter your option: ");
 
@@ -123,7 +122,7 @@ public class main {
                     System.out.println("Admin logged out.");
                     return;
                 }
-                default -> System.out.println("Invalid choice! Please try again.");
+                default -> System.out.println("Invalid choice. Please try again.");
             }
         }
     }
@@ -135,7 +134,7 @@ public class main {
             System.out.println("2. Get a user by ID");
             System.out.println("3. Search users by role");
             System.out.println("4. Get alerts by status");
-            System.out.println("5. Get sorted alerts (by priority)");
+            System.out.println("5. Get sorted alerts by priority");
             System.out.println("6. Logout");
             System.out.print("Enter your option: ");
 
@@ -154,15 +153,9 @@ public class main {
                     System.out.println("User logged out.");
                     return;
                 }
-                default -> System.out.println("Invalid choice! Please try again.");
+                default -> System.out.println("Invalid choice. Please try again.");
             }
         }
-    }
-
-    private static void simulateHackerAttack() {
-        System.out.println("\n*** WARNING: Unauthorized Access Detected! ***");
-        System.out.println("A hacking attack has been simulated and logged.");
-        AuditService.getInstance().writeToCSV("Hacking simulation: Unauthorized user detected!");
     }
 
     private static void deleteUser() {
@@ -171,7 +164,7 @@ public class main {
 
         try {
             userService.deleteUserById(userId);
-            System.out.println("User deleted successfully.");
+            System.out.println("User deleted");
         } catch (UserNotFoundException e) {
             System.out.println("Error: " + e.getMessage());
         }
@@ -180,20 +173,18 @@ public class main {
     private static void searchUsersByRole() {
         System.out.print("\nEnter user role (ADMIN/REGULAR_USER): ");
         String roleInput = scanner.nextLine();
-
         try {
             UserRole role = UserRole.valueOf(roleInput.toUpperCase());
             List<User> users = userService.searchByRole(role);
             users.forEach(System.out::println);
         } catch (IllegalArgumentException e) {
-            System.out.println("Invalid role entered.");
+            System.out.println("Invalid role");
         }
     }
 
     private static void getUserById() {
         System.out.print("\nEnter user ID: ");
         int userId = getUserInput();
-
         try {
             User user = userService.getUserById(userId);
             System.out.println(user);
@@ -203,13 +194,12 @@ public class main {
     }
 
     private static void createAlert() {
-        System.out.println("Choose the type of alert you want to create:");
+        System.out.println("Choose the type of alert:");
         System.out.println("1. Administrative Alert");
         System.out.println("2. Security Alert");
 
         int choice = scanner.nextInt();
         scanner.nextLine(); // consume the newline character
-
         Alert alert;
 
         if (choice == 1) {
@@ -217,12 +207,12 @@ public class main {
         } else if (choice == 2) {
             alert = createSecurityAlert();
         } else {
-            System.out.println("Invalid choice! Please select 1 or 2.");
+            System.out.println("Invalid choice");
             return;
         }
         try {
             alertService.createAlert(alert);
-            System.out.println("Alert created successfully! Details:");
+            System.out.println("Alert created. Details:");
             System.out.println(alert);
         } catch (InvalidDataException e) {
             System.err.println("Error: " + e.getMessage());
@@ -265,7 +255,7 @@ public class main {
 
         try {
             alertService.closeAlert(alertId);
-            System.out.println("Alert deleted successfully.");
+            System.out.println("Alert deleted");
         } catch (Exception e) {
             System.out.println("Error: " + e.getMessage());
         }
@@ -299,6 +289,26 @@ public class main {
             return Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
             return -1; // invalid input
+        }
+    }
+
+    private static void simulateHackerAttack() {
+        // hacker and device
+        HackerUser hacker = new HackerUser(1, "Hacker", "pa55word");
+        Device hackerDevice = new Device("Hacker device", "192.168.1.99");
+        // security alert
+        SecurityAlert alert = new SecurityAlert(
+                0,
+                AlertPriority.CRITICAL,
+                AlertStatus.NEW,
+                "Unauthorized system access detected"
+        );
+        System.out.println(hacker + " is attempting an attack.");
+        try {
+            // associate the alert with the device
+            alertService.createAlert(alert, hackerDevice);
+        } catch (InvalidDataException e) {
+            System.err.println("Error creating alert: " + e.getMessage());
         }
     }
 }

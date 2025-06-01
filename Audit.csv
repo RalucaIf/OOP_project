@@ -75,3 +75,14 @@ Searched by role, 2025-06-01 18:38:47
 Searched by role, 2025-06-01 18:38:55 
 Get alerts by status, 2025-06-01 18:39:03 
 Get alerts by status, 2025-06-01 18:39:11 
+Event: ALERT_CREATED, Source: Hacker Machine (192.168.1.99), 2025-06-01 21:07:20 
+Get alerts by status, 2025-06-01 21:08:23 
+Event: ALERT_CREATED, Source: Hacker Machine (192.168.1.99), 2025-06-01 21:09:31 
+User created: raluca, 2025-06-01 21:19:28 
+Get all users, 2025-06-01 21:20:08 
+User deleted: 2, 2025-06-01 21:20:23 
+Get all users, 2025-06-01 21:20:27 
+Event: ALERT_CREATED, Source: Hacker Machine (192.168.1.99), 2025-06-01 21:21:21 
+Get all users, 2025-06-01 21:57:46 
+Alert created: Administrative Alert: 11 affecting: w [Priority: LOW, Status: NEW], 2025-06-01 21:58:08 
+Get alerts by status, 2025-06-01 21:58:21 

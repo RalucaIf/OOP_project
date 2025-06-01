@@ -6,7 +6,6 @@ import model.User;
 import model.enums.UserRole;
 import repository.UserRepository;
 
-import java.sql.Connection;
 import java.util.List;
 import java.util.Optional;
 
@@ -65,5 +64,4 @@ public class UserService {
         }
         throw new UserNotFoundException("User not found with username: " + username);
     }
-
 }
